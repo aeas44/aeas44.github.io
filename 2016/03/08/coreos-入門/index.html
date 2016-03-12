@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+
+
+
+ <html class="no-js"> 
+<head>
+    <title>CoreOS 入門 &middot; Learn to program</title>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+    <meta http-equiv="content-language" content="ja-jp" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+    <meta name="author" content="aeas44">
+    <meta name="description" content="Learn to program">
+    <meta name="generator" content="Hugo 0.15" />
+
+    <!-- Stylesheets -->
+    <link rel="stylesheet" type="text/css" href="https://aeas44.github.io/css/main.css" />
+    <link rel="stylesheet" type="text/css" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/8.6/styles/tomorrow.min.css" />
+    <link href="https://fonts.googleapis.com/css?family=Open+Sans:400italic,400,300,700|Lora:400,700,400italic" rel="stylesheet" type="text/css">
+</head>
+<body>
+    
+    <div class="off-canvas">
+    <figure class="avatar">
+        <img src="https://aeas44.github.io/img/avatar.gif" title="aeas44">
+    </figure>
+    <div class="bio">
+        
+        <h1>計算機科学の勉強中</h1>
+        
+        
+        <p>修行中</p>
+        
+    </div>
+    <nav>
+        
+        <h6>Subscribe</h6>
+        
+
+        <ul>
+            <li><a target="_blank" href="https://aeas44.github.io/index.xml">RSS feed</a></li>
+        </ul>
+
+        
+        <h6>Follow me on</h6>
+        
+
+        <ul>
+        
+            <li><a target="_blank" href="//github.com/aeas44">Github</a></li>
+        
+            <li><a target="_blank" href="//twitter.com/aeas44">Twitter</a></li>
+        
+        </ul>        
+    </nav>
+</div>
+
+
+    <div class="site-wrapper">
+        <header>
+	<div class="h-wrap">
+		
+		<h1 class="title"><a href="https://aeas44.github.io/">Learn to program</a></h1>
+		
+		<a class="menu-icon" title="Menu"><span class="lines"></span></a>
+	</div>
+</header>
+        
+        <section class="single-wrap">
+            <article class="single-content" itemscope itemtype="//schema.org/BlogPosting">
+                <div class="feat">
+                    <h5 class="page-date">
+                    <time datetime="" itemprop="datePublished">
+                    8. March 2016
+                    </time>
+                    </h5>
+                </div>
+                <h1 class="page-title" itemprop="name headline">CoreOS 入門</h1>
+                <div itemprop="articleBody">
+                    
+
+<p>(この記事は「<a href="https://www.digitalocean.com/community/tutorials/an-introduction-to-coreos-system-components">An Introduction to CoreOS System Components</a>」の翻訳です)</p>
+
+<h3 id="coreos-とは何か:f11b2a982c510710ee964c2cab5fdc67">CoreOS とは何か?</h3>
+
+<p>CoreOS は大規模かつスケーラブルなデプロイを簡単に実現できる Linux ディストリビューションです。Chrome OS から派生した CoreOS は軽量なホスト環境を提供し、アプリケーションは Docker コンテナとして実行します。これにより、プロセスの隔離とクラスタ内でのアプリケーションの移行を簡素化します。</p>
+
+<p>クラスタを管理するため、CoreOS は <code>etcd</code> と呼ばれるグローバルな key-value ストレージを使い、ノード間で設定情報を交換します。このコンポーネントのおかげで、共有情報を元にアプリケーションを動的に設定できます。このような機能をサービス・ディスカバリと呼びます。</p>
+
+<p>クラスタ内でアプリケーションを管理したり、スケジューリングをしたりするため、<code>fleet</code> というソフトウェアが使われます。<code>fleet</code> はクラスタ全体の init システムとして振る舞い、クラスタ内のプロセスを管理します。これにより、高可用性アプリケーションの設定が可能となり、どのノードからでもクラスタをコントロールすることができるようになります。これは個々のノードの systemd init と連携することで実現されます。</p>
+
+<p>この記事では CoreOS のコンセプトを紹介し、それを実現するためのコンポーネントについて説明します。続けて <a href="https://www.digitalocean.com/community/tutorials/how-to-set-up-a-coreos-cluster-on-digitalocean">DigitalOcean での CoreOS のはじめかた</a> についてもご紹介します (訳注: リンク先は英語です)。</p>
+
+<h3 id="coreos-の設計:f11b2a982c510710ee964c2cab5fdc67">CoreOS の設計</h3>
+
+<p>全般的に CoreOS はクラスタリングとコンテナ運用がしやすいように作られています。</p>
+
+<p>ホスト自身は比較的シンプルで、普通のサーバの「機能」の多くは削られています。CoreOS にはパッケージ管理ソフトウェアすらありません。アプリケーションは Docker コンテナとして起動することが期待されています。このことにより、リソースの隔離やポータビリティ、コンテナ外からのサービスの管理が可能になります。</p>
+
+<p>CoreOS は起動時に、&rdquo;cloud-config&rdquo; という設定ファイルを読み込みます。この設定情報はクラスタ内の他のノードと接続したり、基本的なサービスの起動や重要なパラメータを再設定するために使われます。これにより CoreOS は起動と同時にクラスタの一員として働きはじめられます。</p>
+
+<p>通常 &ldquo;cloud-config&rdquo; ファイルは、最低でもクラスタへ参加する方法と <code>etcd</code> および <code>fleet</code> を起動するコマンドを記述します。この3つは互いに関連しています。これらの情報は新しいノードをクラスタ内のノードと接続させ、クラスタ内のノードを設定または管理する手段を提供します。これは CoreOS  ノードがクラスタに参加するために必要です。</p>
+
+<p><code>etcd</code> デーモンはデータをクラスタ内の各ノードに伝播します。クラスタ全体で一貫性のある設定情報を保持することと、どのサービスが他ノードに情報伝達するのかを管理するために有用です。このサービス・ディスカバリ機構は、サービスが自身の設定情報を問い合わせるために使われます。例えば、ロードバランサが背後にいるウェブサーバのIPアドレスを <code>etcd</code> に尋ねるケースなどが考えられるでしょう。</p>
+
+<p><code>fleet</code> デーモンは分散 init システムとして機能します。<code>fleet</code> はクラスタに存在する各ノードの systemd init にフックし、サービスのスケジューリングや、ユーザ定義にもとづいたデプロイ対象の制限などを行います。ユーザは <code>fleet</code> のおかげで、個々のノードの状態をいちいち心配することなく、クラスタを一つのマシンとして捉えることができます。</p>
+
+<p>CoreOS システムの振る舞いについてイメージが湧いたでしょうか。それでは次に各々のコンポーネントについて詳細に見ていきましょう。これらのコンポーネントについて理解することは、とても大切です。</p>
+
+<h3 id="docker-の概要:f11b2a982c510710ee964c2cab5fdc67">Docker の概要</h3>
+
+<p>Docker は LXC (Linux コンテナ) を利用したコンテナ・システムです。カーネルの名前空間と cgroups を使い、各々のプロセスを隔離します。</p>
+
+<p>このことから、アプリケーションは外部環境の影響を受けずに動作することができます。つまり、ソフトウェアの分散がぐっと簡単になるのです。Docker コンテナはどの環境においても同じように動くので、例えばノートパソコンで開発したコンテナはデータセンタのクラスタでも同様に動きます。</p>
+
+<p>Docker を使い、ソフトウェア自身と実行環境を一緒に配布できます。Docker コンテナは他のコンテナと協調して動作することもできるし、一つのサーバとして動かすこともきます。仮想化技術と比較した場合の Docker のメリットは、OS 全体をエミュレートしないことです。Docker はアプリケーションに必要なコンポーネントのみをエミュレートします。したがって、仮想化と同じようなことが可能でありながら、計算資源をそれほど使わずにすみます。</p>
+
+<p>CoreOS は Docker コンテナを一段と便利なものにします。CoreOS では、ほとんど全てのアプリケーションがコンテナ内で動くのです。ちょっと大変なように思えるかもしれませんが、クラスタ間での協調がぐっと容易になります。CoreOS は基本的にクラスタレベルで動作するように設計されており、単体のサーバとして使われることを想定しているわけではないのです。</p>
+
+<p>CoreOS では、このようにして簡単に分散サービスを運用できます。CoreOS に含まれるツールは、指定した条件を満たす計算資源を持つノードでのプロセス実行を可能にします。Docker は各ノードを個別に設定せずとも、分散システムにおいて協調して動作する自己充足的な単位として振る舞うことが可能です。</p>
+
+<h3 id="etcd-の概要:f11b2a982c510710ee964c2cab5fdc67">Etcd の概要</h3>
+
+<p>一貫性のあるグローバルなデータを各ノード間で共有し、サービスディカバリ機能を実現するために <code>etcd</code> は開発されました。</p>
+
+<p><code>etcd</code> サービスは可用性の高い key-value ストアであり、各ノードは設定情報をここから読み込みます。また、稼働中のサービスについての情報を検索したり、よそのノードに知らせるべき情報を書き出すためにも使われます。それぞれのノードは自身の <code>etcd</code> クライアントを持ち、他のクライアントとも情報を共有できるように設定されます。</p>
+
+<p>各アプリケーションは、単にローカルの <code>etcd</code> インタフェースに接続するだけで情報を取得できます。全ての <code>etcd</code> データは、実際にそれがどこで保存されているかに関わらず、どのノードでも取得可能です。データはクラスタ内で自動的に分散され、複製されるためです。リーダー選挙も自動で行われるため、key-value ストアの管理は簡単です。</p>
+
+<p><code>etcd</code> データを扱うには HTTP/JSON API を使うか (デフォルトのエンドポイントは <a href="http://127.0.0.1:4001/v2/keys/">http://127.0.0.1:4001/v2/keys/</a>)、<code>etcd</code> に含まれている <code>etcdctl</code> というユーティリティを使います。どちらの方法でも簡単にデータを扱うことができます。</p>
+
+<p>HTTP API は Docker コンテナの中からもアクセス可能であることに注意してください。つまり、各コンテナは <code>etcd</code> にある値を参照することができるのです。</p>
+
+<h3 id="fleet-の概要:f11b2a982c510710ee964c2cab5fdc67">Fleet の概要</h3>
+
+<p>実際に CoreOS クラスタを作成するには <code>fleet</code> というツールが使われます。簡単に言えば、<code>fleet</code> はクラスタで機能する init システムです。</p>
+
+<p>クラスタ内の各ノードは伝統的な systemd の init を使います。これは自身のサービスを開始するためのものです。単純化してしまえば、<code>fleet</code> はクラスタのメンバーの systemd を管理するインタフェースを提供するのです。</p>
+
+<p>サービスの起動や停止、クラスタ内で動いているプロセスのステータス情報の取得にくわえて、<code>fleet</code> はさらに重要な事も行います。<code>fleet</code> はプロセスを分散する機構を持ち、より負荷の小さいホストでサービスを実行することもできるのです。</p>
+
+<p>起動するサービスに対して条件を指定することもできます。例えば、サービスを特定のホストでのみ動かすように指定することもできます。ホストがどこに存在するのか、すでに動作しているプロセスは何なのか、などの条件によってです。<code>fleet</code> はホストにおけるプロセスの起動に systemd を使うため、サービスを定義するのは systemd の Unit ファイルになります (いくつかのカスタムオプションもあります)。これらの設定ファイルを <code>fleet</code> に渡すと、クラスタ内で管理されることになります。</p>
+
+<p>この柔軟性は高可用性を持つシステムを設計するために役立ちます。例えば、ウェブサーバとして振る舞うコンテナを複数のノードにデプロイすることができます。同様に、依存関係のあるコンテナが動いているノードにのみ、コンテナをデプロイすることも可能です。</p>
+
+<p>全てのノードにおいて、クラスタを <code>fleectl</code> で管理できます。サービスのスケジューリングや、ノードの管理、システムのステータスを監視できます。<code>fleetctl</code> はクラスタに対するインタフェースの役割を果たします。</p>
+
+<h3 id="まとめ:f11b2a982c510710ee964c2cab5fdc67">まとめ</h3>
+
+<p>CoreOS は多くの Linux ディストリビューションとは違います。設計上の意志決定はクラスタの管理のしやすさや、ポータビリティにもとづいて行われています。このような思想から、CoreOS という強力な、モダンでスケーラブルなディストリビューションが生まれました。</p>
+
+<p>さらに CoreOS について興味があれば、<a href="https://www.digitalocean.com/community/tutorials/how-to-set-up-a-coreos-cluster-on-digitalocean">CoreOS クラスタリングに関するガイド</a>をご覧ください。</p>
+
+<h3 id="ライセンス:f11b2a982c510710ee964c2cab5fdc67">ライセンス</h3>
+
+<p>原文は <a href="http://creativecommons.org/licenses/by-nc-sa/4.0/">CC BY-NC-SA 4.0</a> で提供されています。本記事も同ライセンスに従います。</p>
+
+                </div>
+                <div class="feat share">
+                    <a href="//twitter.com/share" class="popup">
+                        <span class="icon-twitter"></span>
+                    </a>
+                </div>
+                
+                
+
+                
+                
+                    <a rel="prev" href="https://aeas44.github.io/2016/03/05/%E3%81%84%E3%81%8B%E3%81%AB%E3%81%97%E3%81%A6-kubernetes-%E3%81%AF-docker-%E3%82%92%E8%A3%9C%E3%81%86%E3%81%8B" id="prev">
+                        &larr; <span class="nav-title nav-title-prev">Older</span>
+                    </a>
+                
+            </article>
+        </section>
+
+        <footer>
+	
+	<small>POWERED BY <a href="//gohugo.io">HUGO</a> - THEME: <a href="//github.com/digitalcraftsman/hugo-hikari-theme">HIKARI</a></small>
+	
+</footer>
+    </div>
+    
+    <script src="//cdnjs.cloudflare.com/ajax/libs/jquery/2.1.4/jquery.min.js"></script>
+<script src="https://aeas44.github.io/js/main.js"></script>
+
+
+
+<!-- Syntax highlighting -->
+<script src="//cdnjs.cloudflare.com/ajax/libs/highlight.js/8.6/highlight.min.js"></script>
+<script>hljs.initHighlightingOnLoad();</script>
+</body>
+</html>

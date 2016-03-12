@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+
+
+
+ <html class="no-js"> 
+<head>
+    <title>いかにして Kubernetes は Docker を補うか &middot; Learn to program</title>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+    <meta http-equiv="content-language" content="ja-jp" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+    <meta name="author" content="aeas44">
+    <meta name="description" content="Learn to program">
+    <meta name="generator" content="Hugo 0.15" />
+
+    <!-- Stylesheets -->
+    <link rel="stylesheet" type="text/css" href="https://aeas44.github.io/css/main.css" />
+    <link rel="stylesheet" type="text/css" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/8.6/styles/tomorrow.min.css" />
+    <link href="https://fonts.googleapis.com/css?family=Open+Sans:400italic,400,300,700|Lora:400,700,400italic" rel="stylesheet" type="text/css">
+</head>
+<body>
+    
+    <div class="off-canvas">
+    <figure class="avatar">
+        <img src="https://aeas44.github.io/img/avatar.gif" title="aeas44">
+    </figure>
+    <div class="bio">
+        
+        <h1>計算機科学の勉強中</h1>
+        
+        
+        <p>修行中</p>
+        
+    </div>
+    <nav>
+        
+        <h6>Subscribe</h6>
+        
+
+        <ul>
+            <li><a target="_blank" href="https://aeas44.github.io/index.xml">RSS feed</a></li>
+        </ul>
+
+        
+        <h6>Follow me on</h6>
+        
+
+        <ul>
+        
+            <li><a target="_blank" href="//github.com/aeas44">Github</a></li>
+        
+            <li><a target="_blank" href="//twitter.com/aeas44">Twitter</a></li>
+        
+        </ul>        
+    </nav>
+</div>
+
+
+    <div class="site-wrapper">
+        <header>
+	<div class="h-wrap">
+		
+		<h1 class="title"><a href="https://aeas44.github.io/">Learn to program</a></h1>
+		
+		<a class="menu-icon" title="Menu"><span class="lines"></span></a>
+	</div>
+</header>
+        
+        <section class="single-wrap">
+            <article class="single-content" itemscope itemtype="//schema.org/BlogPosting">
+                <div class="feat">
+                    <h5 class="page-date">
+                    <time datetime="" itemprop="datePublished">
+                    5. March 2016
+                    </time>
+                    </h5>
+                </div>
+                <h1 class="page-title" itemprop="name headline">いかにして Kubernetes は Docker を補うか</h1>
+                <div itemprop="articleBody">
+                    
+
+<p>(この記事は「<a href="https://opensource.com/business/16/1/scale14x-interview-jason-brooks-red-hat">How Kubernetes is helping Docker blossom</a>」の翻訳です)</p>
+
+<p><img src="/images/posts/2016-03-kubernetes/containers_2015-1-osdc-lead.png" alt="いかにして Kubernetes は Docker を補うか" /></p>
+
+<p><a href="http://kubernetes.io/">Kubernetes</a> と <a href="https://www.docker.com/">Docker</a> は、いずれもソフトウェア業界におけるキーワードとなっています。ビジネスやコンピュータに熱心な人たちはコンテナ技術についてさらに深く学ぼうとしています。</p>
+
+<p>幸いなことに Red Hat でソフトウェア・アナリストをしている <a href="https://twitter.com/jasonbrooks">Jason Brooks</a> に、コンテナ技術の最新動向について聞くことができました。彼は <a href="https://opensource.com/resources/scale-14x">SCaLE 14x</a> で Kubernetes について話す予定です。</p>
+
+<p><img src="/images/posts/2016-03-kubernetes/Interview-banner-QA.png" alt="QA" /></p>
+
+<h3 id="すでに-docker-に馴染みがあり-これから-kubernetes-を学ぼうとしている人たちに何を伝えたいですか:34b9ca37c6dfb54748eda85b8eacb36b">すでに Docker に馴染みがあり、これから Kubernetes を学ぼうとしている人たちに何を伝えたいですか?</h3>
+
+<p>Kubernetes は Docker を複数ホストでの運用に拡張します。(Docker 関連のプロジェクトは全てそうですけど) Kubernetes は比較的新しいプロジェクトです。一方で、 Google の長年におけるコンテナ運用技術の結晶でもあります。この出自にも関わらず、Kubernetes は多くのコントリビュータによって支えられており、結果として様々なユースケースやアイディアが反映されたプロジェクトとなっています。ローカル環境で試しに触ってみたければ、<a href="https://github.com/kubernetes/kubernetes/blob/release-1.1/docs/getting-started-guides/docker.md">こちらの記事</a>を参考にしてください。</p>
+
+<h3 id="kubernetes-はホビー-プログラマが開発しているのでしょうか-それとも大企業が自社のために開発しているのでしょうか:34b9ca37c6dfb54748eda85b8eacb36b">Kubernetes はホビー・プログラマが開発しているのでしょうか? それとも大企業が自社のために開発しているのでしょうか?</h3>
+
+<p>これについて詳しく調べたことはありません。私が言えるのは Kubernetes は様々な種類のアプリケーションに適用可能だということです。私自身も大企業で働いていますが、SCaLE で話すユースケースは大企業だけにあてはまるものではありません。</p>
+
+<h3 id="kubernetes-はクラスタ環境におけるコンテナ化されたアプリケーションのデプロイとスケーラビリティのためのツールですね-これはコンテナの流行にどう関連しているのでしょうか:34b9ca37c6dfb54748eda85b8eacb36b">Kubernetes はクラスタ環境におけるコンテナ化されたアプリケーションのデプロイとスケーラビリティのためのツールですね。これはコンテナの流行にどう関連しているのでしょうか?</h3>
+
+<p>Docker をコンテナ運送に例えるのは魅力的なアイディアです。しかし、コンテナだけでは運河を渡り切ることはできません。コンテナの流行を一過性のものでなくするためには、コンテナを開発者のノートパソコンからプロダクションに移してあげる必要があります。この作業に Kubernetes が一役買ってしているのです。</p>
+
+<h3 id="kubernetes-には将来的に-どのような技術が組み込まれるでしょうか:34b9ca37c6dfb54748eda85b8eacb36b">Kubernetes には将来的に、どのような技術が組み込まれるでしょうか?</h3>
+
+<p>可能性は無限大です。SCaLE ではこのことも話そうと思います。分散ストレージや仮想化もその一部です。これらの技術はコンテナとは関係ないように思えるかもしれません。しかし複数のマシンを柔軟に使いたいとは思いますよね (だから、こういうものが欲しくなりますよね)。</p>
+
+<h3 id="kubernetes-は多くのプラットフォームで動作しますね-マルチプラットフォームの実現はどのくらい大変なのですか:34b9ca37c6dfb54748eda85b8eacb36b">Kubernetes は多くのプラットフォームで動作しますね。マルチプラットフォームの実現はどのくらい大変なのですか?</h3>
+
+<p>これについては、たくさんのコントリビュータが手伝ってくれています。コントリビュータごとに、気にかけるプラットフォームやユースケースが違うのです。結果として、多くのプラットフォームがサポートされています。</p>
+
+<h3 id="これらの環境をテストするための自動化されたセットアップ手順はありますか:34b9ca37c6dfb54748eda85b8eacb36b">これらの環境をテストするための自動化されたセットアップ手順はありますか?</h3>
+
+<p>全ての環境を試してみたわけではありませんが、通常は <a href="https://getfedora.org/">Fedora</a> や <a href="https://www.centos.org/">CentOS</a> による<a href="http://www.projectatomic.io/download/">Atomic</a> プロジェクト、そして <a href="http://ansible.com/">Ansible</a> や <a href="https://www.vagrantup.com/">Vagrant</a> で環境構築の自動化をしています。(<a href="http://www.projectatomic.io/blog/2015/09/clustering-atomic-hosts-with-kubernetes-ansible-and-vagrant/">くわしくはこちら</a>)。</p>
+
+<h3 id="この数年間で-kubernetes-はどのように進化するでしょうか-大きな目標はありますか:34b9ca37c6dfb54748eda85b8eacb36b">この数年間で Kubernetes はどのように進化するでしょうか? 大きな目標はありますか?</h3>
+
+<p>短期的には <a href="https://en.wikipedia.org/wiki/Security-Enhanced_Linux">SELinux</a> に関する問題解決と Kubernetes コンポーネント自身をコンテナの中で動かすことです。また、複数のコンテナ・エンジンのサポートや、<a href="http://mesos.apache.org/">Mesos</a> などの他のリソース管理ツールとの協調にも興味があります。</p>
+
+<h3 id="scale-14x-series:34b9ca37c6dfb54748eda85b8eacb36b">SCaLE 14x Series</h3>
+
+<p>SCaLE はコミュニティにより運営されている、オープンソースまたはフリーソフトウェアに関する北アメリカの大規模カンファレンスです。「The Scale 14x」シリーズでは、スピーカーとしての登壇が予定されている方に、イベントに先駆けてインタビュー記事を掲載しています。</p>
+
+<h3 id="ライセンス:34b9ca37c6dfb54748eda85b8eacb36b">ライセンス</h3>
+
+<p>原文は <a href="http://creativecommons.org/licenses/by-sa/4.0/">CC BY-SA 4.0</a> で提供されています。本記事も同ライセンスに従います。</p>
+
+                </div>
+                <div class="feat share">
+                    <a href="//twitter.com/share" class="popup">
+                        <span class="icon-twitter"></span>
+                    </a>
+                </div>
+                
+                
+
+                
+                    <a rel="next" href="https://aeas44.github.io/2016/03/08/coreos-%E5%85%A5%E9%96%80" id="next">
+                        <span class="nav-title nav-title-next">Newer</span> &rarr;
+                    </a>
+                
+                
+                    <a rel="prev" href="https://aeas44.github.io/2016/02/06/hello-world" id="prev">
+                        &larr; <span class="nav-title nav-title-prev">Older</span>
+                    </a>
+                
+            </article>
+        </section>
+
+        <footer>
+	
+	<small>POWERED BY <a href="//gohugo.io">HUGO</a> - THEME: <a href="//github.com/digitalcraftsman/hugo-hikari-theme">HIKARI</a></small>
+	
+</footer>
+    </div>
+    
+    <script src="//cdnjs.cloudflare.com/ajax/libs/jquery/2.1.4/jquery.min.js"></script>
+<script src="https://aeas44.github.io/js/main.js"></script>
+
+
+
+<!-- Syntax highlighting -->
+<script src="//cdnjs.cloudflare.com/ajax/libs/highlight.js/8.6/highlight.min.js"></script>
+<script>hljs.initHighlightingOnLoad();</script>
+</body>
+</html>

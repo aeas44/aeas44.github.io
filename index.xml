@@ -1,0 +1,171 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes" ?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>Learn to program</title>
+    <link>https://aeas44.github.io/</link>
+    <description>Recent content on Learn to program</description>
+    <generator>Hugo -- gohugo.io</generator>
+    <language>ja-jp</language>
+    <lastBuildDate>Tue, 08 Mar 2016 16:54:34 +0900</lastBuildDate>
+    <atom:link href="https://aeas44.github.io/index.xml" rel="self" type="application/rss+xml" />
+    
+    <item>
+      <title>CoreOS 入門</title>
+      <link>https://aeas44.github.io/2016/03/08/coreos-%E5%85%A5%E9%96%80</link>
+      <pubDate>Tue, 08 Mar 2016 16:54:34 +0900</pubDate>
+      
+      <guid>https://aeas44.github.io/2016/03/08/coreos-%E5%85%A5%E9%96%80</guid>
+      <description>
+
+&lt;p&gt;(この記事は「&lt;a href=&#34;https://www.digitalocean.com/community/tutorials/an-introduction-to-coreos-system-components&#34;&gt;An Introduction to CoreOS System Components&lt;/a&gt;」の翻訳です)&lt;/p&gt;
+
+&lt;h3 id=&#34;coreos-とは何か:f11b2a982c510710ee964c2cab5fdc67&#34;&gt;CoreOS とは何か?&lt;/h3&gt;
+
+&lt;p&gt;CoreOS は大規模かつスケーラブルなデプロイを簡単に実現できる Linux ディストリビューションです。Chrome OS から派生した CoreOS は軽量なホスト環境を提供し、アプリケーションは Docker コンテナとして実行します。これにより、プロセスの隔離とクラスタ内でのアプリケーションの移行を簡素化します。&lt;/p&gt;
+
+&lt;p&gt;クラスタを管理するため、CoreOS は &lt;code&gt;etcd&lt;/code&gt; と呼ばれるグローバルな key-value ストレージを使い、ノード間で設定情報を交換します。このコンポーネントのおかげで、共有情報を元にアプリケーションを動的に設定できます。このような機能をサービス・ディスカバリと呼びます。&lt;/p&gt;
+
+&lt;p&gt;クラスタ内でアプリケーションを管理したり、スケジューリングをしたりするため、&lt;code&gt;fleet&lt;/code&gt; というソフトウェアが使われます。&lt;code&gt;fleet&lt;/code&gt; はクラスタ全体の init システムとして振る舞い、クラスタ内のプロセスを管理します。これにより、高可用性アプリケーションの設定が可能となり、どのノードからでもクラスタをコントロールすることができるようになります。これは個々のノードの systemd init と連携することで実現されます。&lt;/p&gt;
+
+&lt;p&gt;この記事では CoreOS のコンセプトを紹介し、それを実現するためのコンポーネントについて説明します。続けて &lt;a href=&#34;https://www.digitalocean.com/community/tutorials/how-to-set-up-a-coreos-cluster-on-digitalocean&#34;&gt;DigitalOcean での CoreOS のはじめかた&lt;/a&gt; についてもご紹介します (訳注: リンク先は英語です)。&lt;/p&gt;
+
+&lt;h3 id=&#34;coreos-の設計:f11b2a982c510710ee964c2cab5fdc67&#34;&gt;CoreOS の設計&lt;/h3&gt;
+
+&lt;p&gt;全般的に CoreOS はクラスタリングとコンテナ運用がしやすいように作られています。&lt;/p&gt;
+
+&lt;p&gt;ホスト自身は比較的シンプルで、普通のサーバの「機能」の多くは削られています。CoreOS にはパッケージ管理ソフトウェアすらありません。アプリケーションは Docker コンテナとして起動することが期待されています。このことにより、リソースの隔離やポータビリティ、コンテナ外からのサービスの管理が可能になります。&lt;/p&gt;
+
+&lt;p&gt;CoreOS は起動時に、&amp;rdquo;cloud-config&amp;rdquo; という設定ファイルを読み込みます。この設定情報はクラスタ内の他のノードと接続したり、基本的なサービスの起動や重要なパラメータを再設定するために使われます。これにより CoreOS は起動と同時にクラスタの一員として働きはじめられます。&lt;/p&gt;
+
+&lt;p&gt;通常 &amp;ldquo;cloud-config&amp;rdquo; ファイルは、最低でもクラスタへ参加する方法と &lt;code&gt;etcd&lt;/code&gt; および &lt;code&gt;fleet&lt;/code&gt; を起動するコマンドを記述します。この3つは互いに関連しています。これらの情報は新しいノードをクラスタ内のノードと接続させ、クラスタ内のノードを設定または管理する手段を提供します。これは CoreOS  ノードがクラスタに参加するために必要です。&lt;/p&gt;
+
+&lt;p&gt;&lt;code&gt;etcd&lt;/code&gt; デーモンはデータをクラスタ内の各ノードに伝播します。クラスタ全体で一貫性のある設定情報を保持することと、どのサービスが他ノードに情報伝達するのかを管理するために有用です。このサービス・ディスカバリ機構は、サービスが自身の設定情報を問い合わせるために使われます。例えば、ロードバランサが背後にいるウェブサーバのIPアドレスを &lt;code&gt;etcd&lt;/code&gt; に尋ねるケースなどが考えられるでしょう。&lt;/p&gt;
+
+&lt;p&gt;&lt;code&gt;fleet&lt;/code&gt; デーモンは分散 init システムとして機能します。&lt;code&gt;fleet&lt;/code&gt; はクラスタに存在する各ノードの systemd init にフックし、サービスのスケジューリングや、ユーザ定義にもとづいたデプロイ対象の制限などを行います。ユーザは &lt;code&gt;fleet&lt;/code&gt; のおかげで、個々のノードの状態をいちいち心配することなく、クラスタを一つのマシンとして捉えることができます。&lt;/p&gt;
+
+&lt;p&gt;CoreOS システムの振る舞いについてイメージが湧いたでしょうか。それでは次に各々のコンポーネントについて詳細に見ていきましょう。これらのコンポーネントについて理解することは、とても大切です。&lt;/p&gt;
+
+&lt;h3 id=&#34;docker-の概要:f11b2a982c510710ee964c2cab5fdc67&#34;&gt;Docker の概要&lt;/h3&gt;
+
+&lt;p&gt;Docker は LXC (Linux コンテナ) を利用したコンテナ・システムです。カーネルの名前空間と cgroups を使い、各々のプロセスを隔離します。&lt;/p&gt;
+
+&lt;p&gt;このことから、アプリケーションは外部環境の影響を受けずに動作することができます。つまり、ソフトウェアの分散がぐっと簡単になるのです。Docker コンテナはどの環境においても同じように動くので、例えばノートパソコンで開発したコンテナはデータセンタのクラスタでも同様に動きます。&lt;/p&gt;
+
+&lt;p&gt;Docker を使い、ソフトウェア自身と実行環境を一緒に配布できます。Docker コンテナは他のコンテナと協調して動作することもできるし、一つのサーバとして動かすこともきます。仮想化技術と比較した場合の Docker のメリットは、OS 全体をエミュレートしないことです。Docker はアプリケーションに必要なコンポーネントのみをエミュレートします。したがって、仮想化と同じようなことが可能でありながら、計算資源をそれほど使わずにすみます。&lt;/p&gt;
+
+&lt;p&gt;CoreOS は Docker コンテナを一段と便利なものにします。CoreOS では、ほとんど全てのアプリケーションがコンテナ内で動くのです。ちょっと大変なように思えるかもしれませんが、クラスタ間での協調がぐっと容易になります。CoreOS は基本的にクラスタレベルで動作するように設計されており、単体のサーバとして使われることを想定しているわけではないのです。&lt;/p&gt;
+
+&lt;p&gt;CoreOS では、このようにして簡単に分散サービスを運用できます。CoreOS に含まれるツールは、指定した条件を満たす計算資源を持つノードでのプロセス実行を可能にします。Docker は各ノードを個別に設定せずとも、分散システムにおいて協調して動作する自己充足的な単位として振る舞うことが可能です。&lt;/p&gt;
+
+&lt;h3 id=&#34;etcd-の概要:f11b2a982c510710ee964c2cab5fdc67&#34;&gt;Etcd の概要&lt;/h3&gt;
+
+&lt;p&gt;一貫性のあるグローバルなデータを各ノード間で共有し、サービスディカバリ機能を実現するために &lt;code&gt;etcd&lt;/code&gt; は開発されました。&lt;/p&gt;
+
+&lt;p&gt;&lt;code&gt;etcd&lt;/code&gt; サービスは可用性の高い key-value ストアであり、各ノードは設定情報をここから読み込みます。また、稼働中のサービスについての情報を検索したり、よそのノードに知らせるべき情報を書き出すためにも使われます。それぞれのノードは自身の &lt;code&gt;etcd&lt;/code&gt; クライアントを持ち、他のクライアントとも情報を共有できるように設定されます。&lt;/p&gt;
+
+&lt;p&gt;各アプリケーションは、単にローカルの &lt;code&gt;etcd&lt;/code&gt; インタフェースに接続するだけで情報を取得できます。全ての &lt;code&gt;etcd&lt;/code&gt; データは、実際にそれがどこで保存されているかに関わらず、どのノードでも取得可能です。データはクラスタ内で自動的に分散され、複製されるためです。リーダー選挙も自動で行われるため、key-value ストアの管理は簡単です。&lt;/p&gt;
+
+&lt;p&gt;&lt;code&gt;etcd&lt;/code&gt; データを扱うには HTTP/JSON API を使うか (デフォルトのエンドポイントは &lt;a href=&#34;http://127.0.0.1:4001/v2/keys/&#34;&gt;http://127.0.0.1:4001/v2/keys/&lt;/a&gt;)、&lt;code&gt;etcd&lt;/code&gt; に含まれている &lt;code&gt;etcdctl&lt;/code&gt; というユーティリティを使います。どちらの方法でも簡単にデータを扱うことができます。&lt;/p&gt;
+
+&lt;p&gt;HTTP API は Docker コンテナの中からもアクセス可能であることに注意してください。つまり、各コンテナは &lt;code&gt;etcd&lt;/code&gt; にある値を参照することができるのです。&lt;/p&gt;
+
+&lt;h3 id=&#34;fleet-の概要:f11b2a982c510710ee964c2cab5fdc67&#34;&gt;Fleet の概要&lt;/h3&gt;
+
+&lt;p&gt;実際に CoreOS クラスタを作成するには &lt;code&gt;fleet&lt;/code&gt; というツールが使われます。簡単に言えば、&lt;code&gt;fleet&lt;/code&gt; はクラスタで機能する init システムです。&lt;/p&gt;
+
+&lt;p&gt;クラスタ内の各ノードは伝統的な systemd の init を使います。これは自身のサービスを開始するためのものです。単純化してしまえば、&lt;code&gt;fleet&lt;/code&gt; はクラスタのメンバーの systemd を管理するインタフェースを提供するのです。&lt;/p&gt;
+
+&lt;p&gt;サービスの起動や停止、クラスタ内で動いているプロセスのステータス情報の取得にくわえて、&lt;code&gt;fleet&lt;/code&gt; はさらに重要な事も行います。&lt;code&gt;fleet&lt;/code&gt; はプロセスを分散する機構を持ち、より負荷の小さいホストでサービスを実行することもできるのです。&lt;/p&gt;
+
+&lt;p&gt;起動するサービスに対して条件を指定することもできます。例えば、サービスを特定のホストでのみ動かすように指定することもできます。ホストがどこに存在するのか、すでに動作しているプロセスは何なのか、などの条件によってです。&lt;code&gt;fleet&lt;/code&gt; はホストにおけるプロセスの起動に systemd を使うため、サービスを定義するのは systemd の Unit ファイルになります (いくつかのカスタムオプションもあります)。これらの設定ファイルを &lt;code&gt;fleet&lt;/code&gt; に渡すと、クラスタ内で管理されることになります。&lt;/p&gt;
+
+&lt;p&gt;この柔軟性は高可用性を持つシステムを設計するために役立ちます。例えば、ウェブサーバとして振る舞うコンテナを複数のノードにデプロイすることができます。同様に、依存関係のあるコンテナが動いているノードにのみ、コンテナをデプロイすることも可能です。&lt;/p&gt;
+
+&lt;p&gt;全てのノードにおいて、クラスタを &lt;code&gt;fleectl&lt;/code&gt; で管理できます。サービスのスケジューリングや、ノードの管理、システムのステータスを監視できます。&lt;code&gt;fleetctl&lt;/code&gt; はクラスタに対するインタフェースの役割を果たします。&lt;/p&gt;
+
+&lt;h3 id=&#34;まとめ:f11b2a982c510710ee964c2cab5fdc67&#34;&gt;まとめ&lt;/h3&gt;
+
+&lt;p&gt;CoreOS は多くの Linux ディストリビューションとは違います。設計上の意志決定はクラスタの管理のしやすさや、ポータビリティにもとづいて行われています。このような思想から、CoreOS という強力な、モダンでスケーラブルなディストリビューションが生まれました。&lt;/p&gt;
+
+&lt;p&gt;さらに CoreOS について興味があれば、&lt;a href=&#34;https://www.digitalocean.com/community/tutorials/how-to-set-up-a-coreos-cluster-on-digitalocean&#34;&gt;CoreOS クラスタリングに関するガイド&lt;/a&gt;をご覧ください。&lt;/p&gt;
+
+&lt;h3 id=&#34;ライセンス:f11b2a982c510710ee964c2cab5fdc67&#34;&gt;ライセンス&lt;/h3&gt;
+
+&lt;p&gt;原文は &lt;a href=&#34;http://creativecommons.org/licenses/by-nc-sa/4.0/&#34;&gt;CC BY-NC-SA 4.0&lt;/a&gt; で提供されています。本記事も同ライセンスに従います。&lt;/p&gt;
+</description>
+    </item>
+    
+    <item>
+      <title>いかにして Kubernetes は Docker を補うか</title>
+      <link>https://aeas44.github.io/2016/03/05/%E3%81%84%E3%81%8B%E3%81%AB%E3%81%97%E3%81%A6-kubernetes-%E3%81%AF-docker-%E3%82%92%E8%A3%9C%E3%81%86%E3%81%8B</link>
+      <pubDate>Sat, 05 Mar 2016 16:54:34 +0900</pubDate>
+      
+      <guid>https://aeas44.github.io/2016/03/05/%E3%81%84%E3%81%8B%E3%81%AB%E3%81%97%E3%81%A6-kubernetes-%E3%81%AF-docker-%E3%82%92%E8%A3%9C%E3%81%86%E3%81%8B</guid>
+      <description>
+
+&lt;p&gt;(この記事は「&lt;a href=&#34;https://opensource.com/business/16/1/scale14x-interview-jason-brooks-red-hat&#34;&gt;How Kubernetes is helping Docker blossom&lt;/a&gt;」の翻訳です)&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&#34;https://aeas44.github.io/images/posts/2016-03-kubernetes/containers_2015-1-osdc-lead.png&#34; alt=&#34;いかにして Kubernetes は Docker を補うか&#34; /&gt;&lt;/p&gt;
+
+&lt;p&gt;&lt;a href=&#34;http://kubernetes.io/&#34;&gt;Kubernetes&lt;/a&gt; と &lt;a href=&#34;https://www.docker.com/&#34;&gt;Docker&lt;/a&gt; は、いずれもソフトウェア業界におけるキーワードとなっています。ビジネスやコンピュータに熱心な人たちはコンテナ技術についてさらに深く学ぼうとしています。&lt;/p&gt;
+
+&lt;p&gt;幸いなことに Red Hat でソフトウェア・アナリストをしている &lt;a href=&#34;https://twitter.com/jasonbrooks&#34;&gt;Jason Brooks&lt;/a&gt; に、コンテナ技術の最新動向について聞くことができました。彼は &lt;a href=&#34;https://opensource.com/resources/scale-14x&#34;&gt;SCaLE 14x&lt;/a&gt; で Kubernetes について話す予定です。&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&#34;https://aeas44.github.io/images/posts/2016-03-kubernetes/Interview-banner-QA.png&#34; alt=&#34;QA&#34; /&gt;&lt;/p&gt;
+
+&lt;h3 id=&#34;すでに-docker-に馴染みがあり-これから-kubernetes-を学ぼうとしている人たちに何を伝えたいですか:34b9ca37c6dfb54748eda85b8eacb36b&#34;&gt;すでに Docker に馴染みがあり、これから Kubernetes を学ぼうとしている人たちに何を伝えたいですか?&lt;/h3&gt;
+
+&lt;p&gt;Kubernetes は Docker を複数ホストでの運用に拡張します。(Docker 関連のプロジェクトは全てそうですけど) Kubernetes は比較的新しいプロジェクトです。一方で、 Google の長年におけるコンテナ運用技術の結晶でもあります。この出自にも関わらず、Kubernetes は多くのコントリビュータによって支えられており、結果として様々なユースケースやアイディアが反映されたプロジェクトとなっています。ローカル環境で試しに触ってみたければ、&lt;a href=&#34;https://github.com/kubernetes/kubernetes/blob/release-1.1/docs/getting-started-guides/docker.md&#34;&gt;こちらの記事&lt;/a&gt;を参考にしてください。&lt;/p&gt;
+
+&lt;h3 id=&#34;kubernetes-はホビー-プログラマが開発しているのでしょうか-それとも大企業が自社のために開発しているのでしょうか:34b9ca37c6dfb54748eda85b8eacb36b&#34;&gt;Kubernetes はホビー・プログラマが開発しているのでしょうか? それとも大企業が自社のために開発しているのでしょうか?&lt;/h3&gt;
+
+&lt;p&gt;これについて詳しく調べたことはありません。私が言えるのは Kubernetes は様々な種類のアプリケーションに適用可能だということです。私自身も大企業で働いていますが、SCaLE で話すユースケースは大企業だけにあてはまるものではありません。&lt;/p&gt;
+
+&lt;h3 id=&#34;kubernetes-はクラスタ環境におけるコンテナ化されたアプリケーションのデプロイとスケーラビリティのためのツールですね-これはコンテナの流行にどう関連しているのでしょうか:34b9ca37c6dfb54748eda85b8eacb36b&#34;&gt;Kubernetes はクラスタ環境におけるコンテナ化されたアプリケーションのデプロイとスケーラビリティのためのツールですね。これはコンテナの流行にどう関連しているのでしょうか?&lt;/h3&gt;
+
+&lt;p&gt;Docker をコンテナ運送に例えるのは魅力的なアイディアです。しかし、コンテナだけでは運河を渡り切ることはできません。コンテナの流行を一過性のものでなくするためには、コンテナを開発者のノートパソコンからプロダクションに移してあげる必要があります。この作業に Kubernetes が一役買ってしているのです。&lt;/p&gt;
+
+&lt;h3 id=&#34;kubernetes-には将来的に-どのような技術が組み込まれるでしょうか:34b9ca37c6dfb54748eda85b8eacb36b&#34;&gt;Kubernetes には将来的に、どのような技術が組み込まれるでしょうか?&lt;/h3&gt;
+
+&lt;p&gt;可能性は無限大です。SCaLE ではこのことも話そうと思います。分散ストレージや仮想化もその一部です。これらの技術はコンテナとは関係ないように思えるかもしれません。しかし複数のマシンを柔軟に使いたいとは思いますよね (だから、こういうものが欲しくなりますよね)。&lt;/p&gt;
+
+&lt;h3 id=&#34;kubernetes-は多くのプラットフォームで動作しますね-マルチプラットフォームの実現はどのくらい大変なのですか:34b9ca37c6dfb54748eda85b8eacb36b&#34;&gt;Kubernetes は多くのプラットフォームで動作しますね。マルチプラットフォームの実現はどのくらい大変なのですか?&lt;/h3&gt;
+
+&lt;p&gt;これについては、たくさんのコントリビュータが手伝ってくれています。コントリビュータごとに、気にかけるプラットフォームやユースケースが違うのです。結果として、多くのプラットフォームがサポートされています。&lt;/p&gt;
+
+&lt;h3 id=&#34;これらの環境をテストするための自動化されたセットアップ手順はありますか:34b9ca37c6dfb54748eda85b8eacb36b&#34;&gt;これらの環境をテストするための自動化されたセットアップ手順はありますか?&lt;/h3&gt;
+
+&lt;p&gt;全ての環境を試してみたわけではありませんが、通常は &lt;a href=&#34;https://getfedora.org/&#34;&gt;Fedora&lt;/a&gt; や &lt;a href=&#34;https://www.centos.org/&#34;&gt;CentOS&lt;/a&gt; による&lt;a href=&#34;http://www.projectatomic.io/download/&#34;&gt;Atomic&lt;/a&gt; プロジェクト、そして &lt;a href=&#34;http://ansible.com/&#34;&gt;Ansible&lt;/a&gt; や &lt;a href=&#34;https://www.vagrantup.com/&#34;&gt;Vagrant&lt;/a&gt; で環境構築の自動化をしています。(&lt;a href=&#34;http://www.projectatomic.io/blog/2015/09/clustering-atomic-hosts-with-kubernetes-ansible-and-vagrant/&#34;&gt;くわしくはこちら&lt;/a&gt;)。&lt;/p&gt;
+
+&lt;h3 id=&#34;この数年間で-kubernetes-はどのように進化するでしょうか-大きな目標はありますか:34b9ca37c6dfb54748eda85b8eacb36b&#34;&gt;この数年間で Kubernetes はどのように進化するでしょうか? 大きな目標はありますか?&lt;/h3&gt;
+
+&lt;p&gt;短期的には &lt;a href=&#34;https://en.wikipedia.org/wiki/Security-Enhanced_Linux&#34;&gt;SELinux&lt;/a&gt; に関する問題解決と Kubernetes コンポーネント自身をコンテナの中で動かすことです。また、複数のコンテナ・エンジンのサポートや、&lt;a href=&#34;http://mesos.apache.org/&#34;&gt;Mesos&lt;/a&gt; などの他のリソース管理ツールとの協調にも興味があります。&lt;/p&gt;
+
+&lt;h3 id=&#34;scale-14x-series:34b9ca37c6dfb54748eda85b8eacb36b&#34;&gt;SCaLE 14x Series&lt;/h3&gt;
+
+&lt;p&gt;SCaLE はコミュニティにより運営されている、オープンソースまたはフリーソフトウェアに関する北アメリカの大規模カンファレンスです。「The Scale 14x」シリーズでは、スピーカーとしての登壇が予定されている方に、イベントに先駆けてインタビュー記事を掲載しています。&lt;/p&gt;
+
+&lt;h3 id=&#34;ライセンス:34b9ca37c6dfb54748eda85b8eacb36b&#34;&gt;ライセンス&lt;/h3&gt;
+
+&lt;p&gt;原文は &lt;a href=&#34;http://creativecommons.org/licenses/by-sa/4.0/&#34;&gt;CC BY-SA 4.0&lt;/a&gt; で提供されています。本記事も同ライセンスに従います。&lt;/p&gt;
+</description>
+    </item>
+    
+    <item>
+      <title>Hello, world!</title>
+      <link>https://aeas44.github.io/2016/02/06/hello-world</link>
+      <pubDate>Sat, 06 Feb 2016 16:54:34 +0900</pubDate>
+      
+      <guid>https://aeas44.github.io/2016/02/06/hello-world</guid>
+      <description>
+
+&lt;h2 id=&#34;hugo-の書き心地の調査:aa77bbfd89a7b0ff10def205b9c08d51&#34;&gt;Hugo の書き心地の調査&lt;/h2&gt;
+
+&lt;p&gt;今までは &lt;a href=&#34;http://aeas44.tumblr.com/&#34;&gt;Tumblr&lt;/a&gt; で色々と書いてきたけど、やっぱり手元でレビューできないのはつらいと思うようになりました。&lt;/p&gt;
+
+&lt;p&gt;かつては &lt;a href=&#34;https://jekyllrb.com/&#34;&gt;Jekyll&lt;/a&gt; を使っていたこともあったけど、&lt;a href=&#34;https://gohugo.io/&#34;&gt;Hugo&lt;/a&gt; というのが流行りのようなので、試しています。&lt;/p&gt;
+</description>
+    </item>
+    
+  </channel>
+</rss>
